@@ -24,19 +24,25 @@ pub fn build(b: *std.Build) void {
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
+    raylib_artifact.root_module.addCMacro("SUPPORT_FILEFORMAT_FLAC", "");
+
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
-
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
         .name = "clock",
         .root_module = exe_mod,
     });
+
+    // Hide console window on Windows
+    if (target.result.os.tag == .windows) {
+        exe.subsystem = .Windows;
+    }
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
