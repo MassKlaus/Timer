@@ -650,8 +650,9 @@ fn saveConfig() void {
     };
     defer file.close();
 
-    const writer = file.writer();
-    writer.print("sounds_muted={}\n", .{sounds_muted}) catch |err| {
+    var line_buf: [1024]u8 = undefined;
+    var writer = file.writer(&line_buf);
+    writer.interface.print("sounds_muted={}\n", .{sounds_muted}) catch |err| {
         std.log.warn("Failed to write config: {}", .{err});
     };
 }
@@ -664,13 +665,13 @@ fn loadConfig() void {
     };
     defer file.close();
 
-    var buf_reader = std.io.bufferedReader(file.reader());
-    const reader = buf_reader.reader();
+    var line_buf: [1024]u8 = undefined;
+    var reader = file.reader(&line_buf);
 
-    var line_buf: [256]u8 = undefined;
-    while (reader.readUntilDelimiterOrEof(line_buf[0..], '\n') catch null) |line| {
-        if (std.mem.startsWith(u8, line, "sounds_muted=")) {
-            const value = line[13..];
+    while (reader.interface.takeDelimiterExclusive('\n') catch null) |line| {
+        const clean_line = std.mem.trim(u8, line, "\r\n\t ");
+        if (std.mem.startsWith(u8, clean_line, "sounds_muted=") and clean_line.len > 13) {
+            const value = clean_line[13..];
             sounds_muted = std.mem.eql(u8, value, "true");
         }
     }
